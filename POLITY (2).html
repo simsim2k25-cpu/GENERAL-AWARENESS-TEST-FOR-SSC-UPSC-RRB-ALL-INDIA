@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CBT Practice Quiz – Indian Polity (Articles 12–35)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background:#f6f7fb; }
+    .quiz-container { max-width:900px; margin:auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+    .top-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .score-box { font-weight:700; color:#1976d2; }
+    .timer { font-weight:700; color:#c23030; }
+    .question { font-weight:700; margin:14px 0; }
+    .options label { display:block; padding:10px; margin-bottom:8px; border:1px solid #ddd; border-radius:8px; cursor:pointer; }
+    .options input { margin-right:10px; }
+    .options label:hover { background:#f2f6ff; }
+    .navigation { margin-top:14px; }
+    .nav-btn { margin:4px; padding:8px 11px; border:none; border-radius:8px; cursor:pointer; background:#1976d2; color:#fff; }
+    .nav-btn.answered { background:#2d9f3b; } /* green */
+    .nav-btn.wrong { background:#d32f2f; }    /* red */
+    .nav-btn.marked { background:purple; }    /* purple */
+    .nav-btn.active { outline:3px solid rgba(25,118,210,.2); }
+    .controls { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; }
+    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer; }
+    .btn-seq { background:#17a2b8; color:#fff; }
+    .btn-submit { background:#28a745; color:#fff; }
+    .btn-reset { background:#dc3545; color:#fff; }
+    .btn-review { background:#ffb300; color:#000; }
+    .btn-pause { background:#6c757d; color:#fff; }
+    .btn-mark { background:#9c27b0; color:#fff; }
+    .btn-toggle { background:#607d8b; color:#fff; }
+    .result { margin-top:18px; padding:14px; border-radius:8px; background:#fafafa; border:1px solid #eee; }
+    .wrong { background:#fff0f0; }
+    .feedback.correct { background:#e7f9ee; padding:10px; border-radius:6px; border:1px solid #b3e5c1; margin-top:10px; }
+    .feedback.wrong { background:#fff0f0; padding:10px; border-radius:6px; border:1px solid #f1c0c0; margin-top:10px; }
+    .explanation { font-size:0.9em; color:#333; margin-top:6px; }
+    .q-submit { margin-top:10px; }
+    /* Outlines for review sheet */
+    .review-question {
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+    .review-question.wrong {
+      border-color: #d32f2f;
+      background: #fff6f6;
+    }
+    .review-question.correct {
+      border-color: #2d9f3b;
+      background: #f4fff6;
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container">
+    <div class="top-row">
+      <div class="score-box" id="scoreBox">Score: 0/0</div>
+      <h2>CBT Practice Quiz – Indian Polity (Articles 12–35)</h2>
+      <div class="timer" id="timer">15:00</div>
+    </div>
+    <div id="quiz"></div>
+    <div class="navigation" id="navigation"></div>
+    <div class="controls">
+      <button class="btn-seq" id="prevBtn">Previous</button>
+      <button class="btn-seq" id="nextBtn">Next</button>
+      <button class="btn-mark" id="markBtn">Mark for Review</button>
+      <button class="btn-toggle" id="toggleBtn">Show Only Marked</button>
+      <button class="btn-submit" id="submitBtn">Submit All</button>
+      <button class="btn-reset" id="resetBtn">Reset</button>
+      <button class="btn-review" id="reviewBtn" style="display:none;">Review Answers</button>
+      <button class="btn-pause" id="pauseBtn">Pause</button>
+    </div>
+    <div id="result" class="result"></div>
+  </div>
+
+<script>
+/* ------------ Questions ------------ */
+const bank = [
+  { q:"Article 12 defines:",options:["Fundamental Duties","Directive Principles","The term 'State'","Union of India"],answer:2,reason:"Article 12 defines 'State' to include Government & Parliament of India, State Legislatures, and local/other authorities." },
+  { q:"Equality before law?",options:["Article 14","Article 16","Article 19","Article 21"],answer:0,reason:"Article 14 provides equality before law and equal protection of laws." },
+  { q:"Prohibition of discrimination?",options:["Article 15","Article 17","Article 18","Article 19"],answer:0,reason:"Article 15 prohibits discrimination on grounds of religion, race, caste, sex or place of birth." },
+  { q:"Equality in public employment?",options:["Article 14","Article 15","Article 16","Article 18"],answer:2,reason:"Article 16 ensures equality of opportunity in public employment." },
+  { q:"Untouchability abolished?",options:["Article 15","Article 16","Article 17","Article 18"],answer:2,reason:"Article 17 abolishes untouchability and forbids its practice in any form." },
+  { q:"Abolition of titles?",options:["Article 17","Article 18","Article 19","Article 20"],answer:1,reason:"Article 18 abolishes titles except military or academic distinctions." },
+  { q:"Six freedoms?",options:["Article 19","Article 20","Article 21","Article 22"],answer:0,reason:"Article 19 grants six freedoms including speech, assembly, association, movement, residence, profession." },
+  { q:"Protection in conviction?",options:["Article 19","Article 20","Article 21","Article 22"],answer:1,reason:"Article 20 gives protection in respect of conviction for offences (no ex post facto laws, double jeopardy, self-incrimination)." },
+  { q:"Article 21 guarantees:",options:["Equality","Life & Liberty","Against Exploitation","Freedom of Religion"],answer:1,reason:"Article 21 guarantees right to life and personal liberty." },
+  { q:"Right to Education added by:",options:["42nd Amendment","44th Amendment","86th Amendment","97th Amendment"],answer:2,reason:"The 86th Amendment (2002) inserted Article 21A – Right to Education." }
+];
+
+/* ------------ State ------------ */
+let questions=[],submittedAnswers=[],tempSelections=[],marked=[],wrongAnswered=[],feedbacks=[],current=0;
+let endTime=0,timerRunning=false,paused=false,remaining=0;
+let showOnlyMarked=false;
+
+/* ------------ Utils ------------ */
+function shuffle(arr){let a=arr.slice();for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function format(s){let m=Math.floor(s/60),sec=s%60;return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+
+/* ------------ Prepare ------------ */
+function prepare(){
+  questions=bank.map(q=>{
+    let opts=q.options.map((t,i)=>({t,i}));
+    let sh=shuffle(opts);
+    return {q:q.q,options:sh.map(o=>o.t),answer:sh.findIndex(o=>o.i===q.answer),reason:q.reason};
+  });
+  questions=shuffle(questions);
+  submittedAnswers=Array(questions.length).fill(null);
+  tempSelections=Array(questions.length).fill(null);
+  marked=Array(questions.length).fill(false);
+  wrongAnswered=Array(questions.length).fill(false);
+  feedbacks=Array(questions.length).fill("");
+  updateScore();
+}
+
+/* ------------ Render ------------ */
+function renderQ(i){
+  current=i;
+  let q=questions[i];
+  let html=`<div class="question">Q${i+1}. ${q.q}</div><div class="options">`;
+  q.options.forEach((o,idx)=>{
+    html+=`<label><input type="radio" name="q${i}" value="${idx}" ${tempSelections[i]===idx?"checked":""}> ${o}</label>`;
+  });
+  html+="</div><div id='qSubmit' class='q-submit'></div>";
+  html+=`<div id='feedback'>${feedbacks[i]}</div>`;
+  document.getElementById("quiz").innerHTML=html;
+
+  document.querySelectorAll(`input[name=q${i}]`).forEach(inp=>{
+    inp.addEventListener("change",()=>{ 
+      tempSelections[i]=+inp.value; 
+      renderQ(i);
+    });
+  });
+
+  if(tempSelections[i]!==null && submittedAnswers[i]===null){
+    document.getElementById("qSubmit").innerHTML=`<button class="btn-submit" onclick="submitSingle(${i})">Submit This Question</button>`;
+  }
+  renderNav();
+}
+
+function renderNav(){
+  let nav="";
+  questions.forEach((_,i)=>{
+    if(showOnlyMarked && !marked[i]) return; // filter
+    let cls="nav-btn";
+    if(i===current) cls+=" active";
+
+    if(submittedAnswers[i]!==null){
+      if(submittedAnswers[i]===questions[i].answer){
+        cls+=" answered"; // green
+      } else {
+        cls+=" wrong"; // red
+      }
+    } else if(marked[i]){
+      cls+=" marked"; // purple (only if unanswered)
+    }
+
+    nav+=`<button class="${cls}" onclick="renderQ(${i})">${i+1}</button>`;
+  });
+  document.getElementById("navigation").innerHTML=nav;
+}
+
+/* ------------ Timer ------------ */
+function updateTimer(){
+  if(!timerRunning||paused)return;
+  let remain=Math.max(0,Math.floor((endTime-Date.now())/1000));
+  document.getElementById("timer").textContent=format(remain);
+  if(remain<=0){timerRunning=false;submit(true);}
+  else setTimeout(updateTimer,1000);
+}
+function startTimer(){
+  if(timerRunning)return;
+  timerRunning=true;
+  endTime=Date.now()+15*60*1000;
+  paused=false;
+  updateTimer();
+}
+function pauseTimer(){
+  if(paused){
+    paused=false;
+    endTime=Date.now()+remaining*1000;
+    updateTimer();
+    document.getElementById("pauseBtn").textContent="Pause";
+  }else{
+    paused=true;
+    remaining=Math.max(0,Math.floor((endTime-Date.now())/1000));
+    document.getElementById("pauseBtn").textContent="Resume";
+  }
+}
+function stopTimer(){timerRunning=false;paused=false;}
+
+/* ------------ Actions ------------ */
+function nextQ(){if(current<questions.length-1)renderQ(current+1);}
+function prevQ(){if(current>0)renderQ(current-1);}
+function markQ(){marked[current]=!marked[current];renderNav();}
+function toggleMarked(){
+  showOnlyMarked=!showOnlyMarked;
+  document.getElementById("toggleBtn").textContent=showOnlyMarked?"Show All Questions":"Show Only Marked";
+  renderNav();
+}
+
+function submitSingle(i){
+  if(tempSelections[i]===null)return;
+  submittedAnswers[i]=tempSelections[i];
+  let q=questions[i];
+  if(submittedAnswers[i]===q.answer){
+    feedbacks[i]=`<div class="feedback correct">✅ Correct!</div>`;
+    wrongAnswered[i]=false;
+  }else{
+    feedbacks[i]=`<div class="feedback wrong">❌ Wrong!<br>Correct Answer: <b>${q.options[q.answer]}</b><div class="explanation">Reason: ${q.reason}</div></div>`;
+    wrongAnswered[i]=true;
+  }
+  updateScore();
+  renderQ(i);
+}
+
+function submit(auto=false){
+  stopTimer();
+  let score=0;
+  questions.forEach((q,i)=>{
+    if(submittedAnswers[i]===q.answer)score++;
+  });
+  document.getElementById("result").innerHTML=`<h3>Score: ${score}/${questions.length}</h3>${auto?"<p><em>Time Up – Auto Submitted</em></p>":""}`;
+  document.getElementById("reviewBtn").style.display="inline-block";
+}
+
+function review(){
+  let html="<h3>Final Review Answer Sheet</h3>";
+  questions.forEach((q,i)=>{
+    let cls = submittedAnswers[i]===q.answer ? "review-question correct" : "review-question wrong";
+    html+=`<div class="${cls}"><b>Q${i+1}. ${q.q}</b><br>`;
+    if(submittedAnswers[i]!==null){
+      html+=`Your Answer: ${q.options[submittedAnswers[i]]}<br>`;
+    }else{
+      html+=`Your Answer: <i>Not Attempted</i><br>`;
+    }
+    html+=`Correct Answer: ${q.options[q.answer]}<div class="explanation">Reason: ${q.reason}</div></div>`;
+  });
+  document.getElementById("result").innerHTML=html;
+}
+
+function reset(){
+  prepare();
+  renderQ(0);
+  document.getElementById("result").innerHTML="";
+  document.getElementById("reviewBtn").style.display="none";
+  stopTimer();
+  startTimer();
+  document.getElementById("pauseBtn").textContent="Pause";
+}
+
+function updateScore(){
+  let score=0;
+  questions.forEach((q,i)=>{
+    if(submittedAnswers[i]===q.answer)score++;
+  });
+  document.getElementById("scoreBox").textContent=`Score: ${score}/${questions.length}`;
+}
+
+/* ------------ Init ------------ */
+document.getElementById("nextBtn").onclick=nextQ;
+document.getElementById("prevBtn").onclick=prevQ;
+document.getElementById("submitBtn").onclick=()=>submit(false);
+document.getElementById("resetBtn").onclick=reset;
+document.getElementById("reviewBtn").onclick=review;
+document.getElementById("pauseBtn").onclick=pauseTimer;
+document.getElementById("markBtn").onclick=markQ;
+document.getElementById("toggleBtn").onclick=toggleMarked;
+reset();
+</script>
+</body>
+</html>
